@@ -1,0 +1,181 @@
+---
+title: "analysis of bottom trawl samples using mifish primers"
+author: "Kimberly Ledger"
+date: "2023-03-13"
+output: html_document
+---
+
+data from miseq run 10 March 2023 - included SequalPrep normalization during library prep
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+load libraries
+```{r, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+read in taxonomic identification table - from BLASTN assignmnet
+```{r}
+# taxons_blast <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/asv_taxonomy_blastn.csv", row.names = 1) %>%
+#   rename(taxon_blast = taxon) %>%
+#   rename(rank_blast = taxonomic_level)
+```
+
+read in taxonomic identification table - from INSECT assignmnet
+```{r}
+taxons_insect <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/asv_taxonomy_insect.csv", row.names = 1) %>%
+  filter(class != "Mammalia") %>%
+  filter(taxon != "root") %>%
+  select(representative, taxon, rank) %>%
+  rename(ASV = representative) %>%
+  rename(taxon_insect = taxon) %>%
+  rename(rank_insect = rank)
+```
+
+compare blast and insect taxonomies 
+```{r}
+# taxons <- taxons_insect %>%
+#   left_join(taxons_blast, by = "ASV")
+# 
+# head(taxons)
+```
+
+taxonomies are pretty similar, with the insect classifier getting to species or genus level more often than the blastn classifier
+
+read in samples by asv table
+```{r}
+asv_table <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/ASVtable.csv") %>%
+  rename(SampleID = X)
+```
+
+join taxon and asv table
+```{r}
+read_summary <- asv_table %>%
+  pivot_longer(cols = starts_with("ASV"), names_to = "ASV", values_to = "count") %>%
+  left_join(taxons_insect, by = "ASV") %>%
+  filter(count > 0) %>%
+  filter(taxon_insect != "NA") %>%
+  group_by(SampleID, taxon_insect) %>%
+  summarise(total_read_count = sum(count)) %>%
+  pivot_wider(names_from = "taxon_insect", values_from = "total_read_count") %>%
+  replace(is.na(.), 0)
+```
+
+pivot longer
+```{r}
+read_summary_long <- read_summary %>%
+  pivot_longer(cols = 2:27, names_to = "taxon", values_to = "reads") %>%
+  mutate(reads = ifelse(is.na(reads), 0, reads))
+```
+
+
+read in bottom trawl metadata and join 
+```{r}
+metadata <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230216/bottomtrawl_metadata_20230216.csv")
+
+read_summary_split <- read_summary_long %>%
+  separate(SampleID, sep = "-", into =c("primer_set", "project", "sampleID"))
+
+bt <- metadata %>%
+  left_join(read_summary_split, by = "sampleID") %>%
+  unite("newID", station:sample_rep, remove = FALSE)
+```
+
+
+## first, let's look at the extraction blanks
+```{r}
+bt %>%
+  filter(sample_type == "extraction_blank") %>%
+  ggplot(aes(x= sampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+cool, no reads in extraction blanks! 
+
+## second, let's check the field blanks 
+
+```{r}
+bt %>%
+  filter(sample_type == "field_blank") %>%
+  ggplot(aes(x= newID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+okay, some contamination in field blanks.
+
+## third, let's check out the field samples 
+
+make a general plot for read counts  
+```{r, fig.height=8, fig.width=8}
+bt %>%
+  filter(sample_type != "extraction_blank") %>%
+  filter(sample_type != "field_blank") %>%
+  ggplot(aes(x= newID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  scale_y_sqrt() +
+  facet_wrap(~station, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+lots of variation among extraction replicates. many with no ASVs. no pcr replicates where included in the library. 
+
+## summary table of species reads for field samples 
+
+```{r, warning=FALSE}
+summary <- bt %>%
+  filter(sample_type != "extraction_blank") %>%
+  filter(sample_type != "field_blank") %>% 
+  group_by(taxon) %>%
+  summarize(read_count = sum(reads)) %>%
+  arrange(desc(read_count))
+
+library(rmarkdown)
+
+f <- function() {
+  paged_table(summary)
+}
+
+f()
+```
+
+
+
+
