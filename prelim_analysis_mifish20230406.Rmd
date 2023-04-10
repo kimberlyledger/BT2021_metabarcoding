@@ -72,9 +72,9 @@ read_summary_long <- read_summary %>%
 
 
 read in bottom trawl metadata and join  
-6April run used same samples as 16Feb run so i'll just use the same metadata
+6April run used new positive control so need to use updated metadata file 
 ```{r}
-metadata <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230216/bottomtrawl_metadata_20230216.csv")
+metadata <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230406/bottomtrawl_metadata_20230406.csv")
 
 read_summary_split <- read_summary_long %>%
   separate(SampleID, sep = "-", into =c("primer_set", "project", "sampleID"))
@@ -107,7 +107,29 @@ bt %>%
 
 cool, no reads in extraction blanks! 
 
-## second, let's check the field blanks 
+## second, let's look at the positive control
+```{r}
+bt %>%
+  filter(sample_type == "positive_control") %>%
+  ggplot(aes(x= sampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+good, just lake sturgeon here (Acipenser fulvescens)
+
+## nest, let's check the field blanks 
 
 ```{r}
 bt %>%
@@ -175,8 +197,5 @@ f <- function() {
 
 f()
 ```
-
-
-xxxx
 
 
