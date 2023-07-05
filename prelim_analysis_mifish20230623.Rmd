@@ -251,7 +251,6 @@ bt %>%
 no, whoop! 
 
 
-
 just glancing at it, how similar to pcr replicates look? 
 
 start with station 90
@@ -307,6 +306,5 @@ bt %>%
 ```
 
 at least at this first look, the pcr reps do not look as similar as i'd like... but more data processing and better tax ids are needed before making a call on this.  - let's do decontamination first, then come back
-
-
+---------------------------------
 
