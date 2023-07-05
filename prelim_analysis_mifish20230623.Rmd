@@ -251,6 +251,7 @@ bt %>%
 no, whoop! 
 
 
+
 just glancing at it, how similar to pcr replicates look? 
 
 start with station 90
