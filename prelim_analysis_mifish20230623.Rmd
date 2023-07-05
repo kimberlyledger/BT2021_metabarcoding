@@ -1,0 +1,311 @@
+---
+title: "analysis of bottom trawl samples using mifish primers"
+author: "Kimberly Ledger"
+date: "2023-07-05"
+output: html_document
+---
+
+data from miseq run 23 June 2023 - included picogreen quantificaiton and normalization by hand during library prep  
+**the ASVS/samples have not been decontaminated** this is just a quick preliminary look at the samples 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+load libraries
+```{r, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+read in taxonomic identification table - from BLASTN assignmnet
+```{r}
+# taxons_blast <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/asv_taxonomy_blastn.csv", row.names = 1) %>%
+#   rename(taxon_blast = taxon) %>%
+#   rename(rank_blast = taxonomic_level)
+```
+
+read in taxonomic identification table - from INSECT assignmnet
+```{r}
+taxons_insect <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230623/trimmed/filtered/outputs/asv_full_taxonomy_insect.csv", row.names = 1) %>%
+  filter(class != "Mammalia") %>%
+  filter(taxon != "root") %>%
+  select(representative, taxon, rank) %>%
+  rename(ASV = representative) %>%
+  rename(taxon_insect = taxon) %>%
+  rename(rank_insect = rank)
+```
+
+compare blast and insect taxonomies 
+```{r}
+# taxons <- taxons_insect %>%
+#   left_join(taxons_blast, by = "ASV")
+# 
+# head(taxons)
+```
+
+read in samples by asv table
+```{r}
+asv_table <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230623/trimmed/filtered/outputs/ASVtable.csv") %>%
+  rename(SampleID = X)
+```
+
+join taxon and asv table
+```{r}
+read_summary <- asv_table %>%
+  pivot_longer(cols = starts_with("ASV"), names_to = "ASV", values_to = "count") %>%
+  left_join(taxons_insect, by = "ASV") %>%
+  filter(count > 0) %>%
+  filter(taxon_insect != "NA") %>%
+  group_by(SampleID, taxon_insect) %>%
+  summarise(total_read_count = sum(count)) %>%
+  pivot_wider(names_from = "taxon_insect", values_from = "total_read_count") %>%
+  replace(is.na(.), 0)
+```
+
+pivot longer -- **remember to change column numbers when using new data sets** 
+```{r}
+read_summary_long <- read_summary %>%
+  pivot_longer(cols = 2:75, names_to = "taxon", values_to = "reads") %>%
+  mutate(reads = ifelse(is.na(reads), 0, reads))
+```
+
+
+read in bottom trawl metadata and join  
+```{r}
+metadata <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230623/bottomtrawl_metadata_20230623.csv") %>%
+  unite("SampleID", sampleID:replicate, sep = "-", remove = FALSE) %>%
+  select(!X)
+
+bt <- metadata %>%
+  left_join(read_summary_long, by = c("SampleID"))
+```
+
+
+## first, let's look at the extraction blanks
+```{r}
+bt %>%
+  filter(sample_type == "extraction_blank") %>%
+  ggplot(aes(x= SampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_blank(),
+    #legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+okay, not too many reads in extraction blanks... 
+
+## let's look at the pcr blanks
+```{r}
+bt %>%
+  filter(sample_type == "PCR_blank") %>%
+  ggplot(aes(x= SampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_blank(),
+    #legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+okay, not too many reads in pcr blanks... 
+
+
+## second, let's look at the positive control
+```{r}
+bt %>%
+  filter(sample_type == "positive_control") %>%
+  ggplot(aes(x= SampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_blank(),
+    #legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+good, lots of lake sturgeon here (Acipenser fulvescens)
+
+## next, let's check the field blanks 
+
+```{r}
+bt %>%
+  filter(sample_type == "field_blank") %>%
+  ggplot(aes(x= SampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_blank(),
+    #legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "right",
+    legend.title = element_blank()
+  )
+```
+
+okay, some contamination in field blanks.
+
+```{r}
+bt %>%
+  filter(sample_type == "field_blank") %>%
+  filter(reads > 0) %>%
+  group_by(taxon) %>%
+  summarize(total_reads = sum(reads)) %>%
+  arrange(desc(total_reads))
+```
+
+field contamination is a lot of Gadus, Sebastes, etc... 
+
+
+## third, let's check out the field samples 
+
+make a general plot for read counts  
+```{r, fig.height=8, fig.width=8}
+bt %>%
+  filter(sample_type == "sample") %>%
+  ggplot(aes(x= SampleID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  scale_y_sqrt() +
+  facet_wrap(~station, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    #axis.text.x = element_text(angle = 90, hjust = 0.95),
+    axis.text.x = element_blank(),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+
+## summary table of species reads for field samples 
+
+```{r, warning=FALSE}
+summary <- bt %>%
+  filter(sample_type == "sample") %>%
+  group_by(taxon) %>%
+  summarize(read_count = sum(reads)) %>%
+  arrange(desc(read_count))
+
+library(rmarkdown)
+
+f <- function() {
+  paged_table(summary)
+}
+
+f()
+```
+
+
+## does known contamination from previous libraries still exist??
+** Centrarchoidei (suborder) are sunfish (Centrarchidae) which are freshwater and include large mouth bass... 
+** Ictalurus == catfish
+** Micropterus salmoides == largemouth bass
+** Characiphysae - perhaps related to catfish
+
+```{r}
+bt %>%
+  filter(taxon == "Centrarchoidei") %>%
+  filter(taxon == "Ictalurus") %>%
+  filter(taxon == "Micropterus salmoides") %>%
+  filter(taxon == "Characiphysae")
+```
+
+no, whoop! 
+
+
+just glancing at it, how similar to pcr replicates look? 
+
+start with station 90
+```{r, fig.height=8, fig.width=8}
+bt %>%
+  filter(station == 90) %>%
+  group_by(SampleID) %>%
+  mutate(sum=sum(reads)) %>%
+  mutate(prop = reads/sum) %>%
+  filter(sum > 1000) %>%
+  ggplot(aes(x= SampleID, y = prop, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  facet_wrap(~sample_rep, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    #axis.text.x = element_text(angle = 90, hjust = 0.95),
+    axis.text.x = element_blank(),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+start with station 95
+```{r, fig.height=8, fig.width=8}
+bt %>%
+  filter(station == 95) %>%
+  group_by(SampleID) %>%
+  mutate(sum=sum(reads)) %>%
+  mutate(prop = reads/sum) %>%
+  filter(sum > 1000) %>%
+  ggplot(aes(x= SampleID, y = prop, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  facet_wrap(~sample_rep, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    #axis.text.x = element_text(angle = 90, hjust = 0.95),
+    axis.text.x = element_blank(),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+at least at this first look, the pcr reps do not look as similar as i'd like... but more data processing and better tax ids are needed before making a call on this.  - let's do decontamination first, then come back
+
+
+
