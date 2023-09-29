@@ -176,4 +176,24 @@ f()
 
 
 
-
+```{r}
+bt_contaim <- bt %>%
+  filter(taxon %in% c("Centrarchoidei", "Ictalurus", "Micropterus salmoides", "Characiphysae"))
+  
+ggplot(bt_contaim, aes(x= newID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  scale_y_sqrt() +
+  facet_wrap(~station, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```

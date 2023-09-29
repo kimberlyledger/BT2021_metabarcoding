@@ -26,7 +26,7 @@ read in taxonomic identification table - from BLASTN assignmnet
 
 read in taxonomic identification table - from INSECT assignmnet
 ```{r}
-taxons_insect <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/asv_taxonomy_insect.csv", row.names = 1) %>%
+taxons_insect <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered2/outputs/asv_taxonomy_insect.csv", row.names = 1) %>%
   filter(class != "Mammalia") %>%
   filter(taxon != "root") %>%
   select(representative, taxon, rank) %>%
@@ -47,7 +47,7 @@ taxonomies are pretty similar, with the insect classifier getting to species or 
 
 read in samples by asv table
 ```{r}
-asv_table <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/ASVtable.csv") %>%
+asv_table <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered2/outputs/ASVtable.csv") %>%
   rename(SampleID = X)
 ```
 
@@ -67,7 +67,7 @@ read_summary <- asv_table %>%
 pivot longer
 ```{r}
 read_summary_long <- read_summary %>%
-  pivot_longer(cols = 2:27, names_to = "taxon", values_to = "reads") %>%
+  pivot_longer(cols = 2:28, names_to = "taxon", values_to = "reads") %>%
   mutate(reads = ifelse(is.na(reads), 0, reads))
 ```
 
@@ -177,94 +177,6 @@ f()
 ```
 
 
+xxxx
 
 
-## okay now let's filter out known contaimination... 
-** Centrarchoidei (suborder) are sunfish (Centrarchidae) which are freshwater and include large mouth bass... 
-** Ictalurus == catfish
-** Micropterus salmoides == largemouth bass
-** Characiphysae - perhaps related to catfish
-
-
-```{r}
-bt_filter <- bt %>%
-  filter(taxon != "Centrarchoidei") %>%
-  filter(taxon != "Micropterus salmoides") %>%
-  #filter(taxon != "Acipenser fulvescens") %>%  ## positive control
-  #filter(taxon != "Acipenser") %>% ## positive control
-  filter(sample_type != "extraction_blank") %>%
-  filter(sample_type != "field_blank")
-```
-
-plot
-```{r, fig.height=8, fig.width=8}
-bt_filter %>%
-  ggplot(aes(x= newID, y = reads, fill = taxon)) +
-  geom_bar(stat = "identity") + 
-  scale_y_sqrt() +
-  facet_wrap(~station, scales = 'free', ncol = 4) + 
-  theme_bw() +
-  labs(
-    y = "sequencing reads",
-    x = "taxon",
-    title = "assigned reads") + 
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 0.95),
-    legend.text = element_text(size = 8),
-    legend.key.size = unit(0.3, "cm"),
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
-```
-
-i don't know why the samples with no reads (NA's) drop out of these plots when they are in the rest... anyways, moving on. 
-
-
-```{r}
-temp1 <- bt_filter %>%
-  filter(reads != 0) %>%
-  group_by(station) %>%
-  distinct(newID) %>%
-  summarize(reps_w_reads = length(newID))
-temp1
-summary(temp1$reps_w_reads)
-```
-
-
-
-```{r}
-temp2 <- bt_filter %>%
-  filter(reads != 0) %>%
-  group_by(station, newID, taxon) %>%
-  summarize()
-temp2
-
-temp3 <- temp2 %>%
-  group_by(station, newID) %>%
-  summarize(spp_richness = n())
-temp3
-
-summary(temp3$spp_richness)
-```
-
-```{r}
-bt_contaim <- bt %>%
-  filter(taxon %in% c("Centrarchoidei", "Ictalurus", "Micropterus salmoides", "Characiphysae"))
-  
-ggplot(bt_contaim, aes(x= newID, y = reads, fill = taxon)) +
-  geom_bar(stat = "identity") + 
-  scale_y_sqrt() +
-  facet_wrap(~station, scales = 'free', ncol = 4) + 
-  theme_bw() +
-  labs(
-    y = "sequencing reads",
-    x = "taxon",
-    title = "assigned reads") + 
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 0.95),
-    legend.text = element_text(size = 8),
-    legend.key.size = unit(0.3, "cm"),
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
-```

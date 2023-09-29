@@ -202,3 +202,101 @@ f()
 ```
 
 
+## okay now let's filter out known contaimination... 
+** Centrarchoidei (suborder) are sunfish (Centrarchidae) which are freshwater and include large mouth bass... 
+** Ictalurus == catfish
+** Micropterus salmoides == largemouth bass
+** Characiphysae - perhaps related to catfish
+
+
+```{r}
+bt_filter <- bt %>%
+  filter(taxon != "Centrarchoidei") %>%
+  filter(taxon != "Ictalurus") %>%
+  filter(taxon != "Micropterus salmoides") %>%
+  filter(taxon != "Characiphysae") %>%
+  #filter(taxon != "Acipenser fulvescens") %>%  ## positive control
+  #filter(taxon != "Acipenser") %>% ## positive control
+  filter(sample_type != "extraction_blank") %>%
+  filter(sample_type != "field_blank") %>% 
+  filter(sample_type != "positive_control")
+```
+
+plot
+```{r, fig.height=8, fig.width=8}
+bt_filter %>%
+  ggplot(aes(x= newID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  scale_y_sqrt() +
+  facet_wrap(~station, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+i don't know why the samples with no reads (NA's) drop out of these plots when they are in the rest... anyways, moving on. 
+
+
+```{r}
+temp1 <- bt_filter %>%
+  filter(reads != 0) %>%
+  group_by(station) %>%
+  distinct(newID) %>%
+  summarize(reps_w_reads = length(newID))
+temp1
+summary(temp1$reps_w_reads)
+```
+
+
+
+```{r}
+temp2 <- bt_filter %>%
+  filter(reads != 0) %>%
+  group_by(station, newID, taxon) %>%
+  summarize()
+temp2
+
+temp3 <- temp2 %>%
+  group_by(station, newID) %>%
+  summarize(spp_richness = n())
+temp3
+
+summary(temp3$spp_richness)
+```
+
+now i want to identify some samples that have contamination to select for re-extraction. 
+
+```{r}
+bt_contaim <- bt %>%
+  filter(taxon %in% c("Centrarchoidei", "Ictalurus", "Micropterus salmoides", "Characiphysae"))
+  
+ggplot(bt_contaim, aes(x= newID, y = reads, fill = taxon)) +
+  geom_bar(stat = "identity") + 
+  scale_y_sqrt() +
+  facet_wrap(~station, scales = 'free', ncol = 4) + 
+  theme_bw() +
+  labs(
+    y = "sequencing reads",
+    x = "taxon",
+    title = "assigned reads") + 
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 0.95),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.3, "cm"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+```
+
+
+
+

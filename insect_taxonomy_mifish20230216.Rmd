@@ -19,7 +19,7 @@ library(insect)
 read in the data (ASV table from DADA2)
 make sure sample names are designated as row names, and not in their own column 
 ```{r}
-seqs <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/seqtab.csv", row.names = 1)
+seqs <- read.csv("/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered2/outputs/seqtab.csv", row.names = 1)
 ```
 
 assign taxon IDs to the DADA2 output
@@ -48,7 +48,7 @@ output this table for comparison with blastn taxonomy
 #asv_insect <- my_class %>%
 #  select(representative, taxon, rank)
 
-write.csv(my_class, "/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/asv_taxonomy_insect.csv")
+write.csv(my_class, "/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered2/outputs/asv_taxonomy_insect.csv")
 ```
 
 
@@ -74,7 +74,7 @@ my_class_short <- merge(taxa, counts, by = "taxID")
 
 output taxonomic identification 
 ```{r}
-write.csv(my_class_short, "/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered/outputs/taxon_table.csv")
+write.csv(my_class_short, "/genetics/edna/workdir/bottomtrawl_2022/20230310/trimmed/filtered2/outputs/taxon_table.csv")
 ```
 
 
